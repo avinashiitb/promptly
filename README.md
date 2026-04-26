@@ -1,70 +1,39 @@
-# Getting Started with Create React App
+# Promptly
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Promptly is an interactive, persistent streaming terminal plugin built for the DevScribe platform. It features a fully functional `xterm.js` terminal output alongside a powerful multi-block Command Scratchpad, designed to improve the developer workflow for running, saving, and managing complex shell commands.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+* **Command Scratchpad:** Write, edit, and organize multiple bash commands in dedicated editor blocks.
+* **Drag-and-Drop Reordering:** Intuitively organize your command blocks by dragging them up or down with visual drop indicators.
+* **Interactive Terminal Stream:** Powered by `xterm.js`, providing rich ANSI color support, auto-fitting, and real-time PTY backend streaming.
+* **Persistent State:** Your command blocks, active theme, and UI pane layout are automatically saved and restored when reopening the document.
+* **Theme Support:** Beautiful, natively integrated Light and Dark themes that automatically style the UI and terminal palette.
+* **Exportable Data:** Export your entire workspace state as a `.ds` (DevScribe) file for easy sharing and backup.
+* **Resizable Layout:** Adjust the split view between the Scratchpad and Terminal dynamically.
 
-### `npm start`
+## Installation & Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+This plugin is designed to be run within the DevScribe Electron environment. It communicates with the DevScribe main process via the `window.pluginAPI` IPC bridge to spawn real terminal instances.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+To build the plugin for release:
 
-### `npm test`
+```bash
+# Install dependencies
+npm install
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+# Build the optimized production bundle
+npm run build
 
-### `npm run build`
+# Package the plugin into a .zip for distribution
+npm run package
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The resulting `promptly-x.x.x.zip` file in the `release/` directory can be uploaded to the DevScribe Plugin Store.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Technical Details
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+* **Frontend:** React, Craco, CSS Modules
+* **Terminal Engine:** `xterm.js`, `xterm-addon-fit`, `xterm-addon-web-links`
+* **Icons:** Remix Icons (`remixicon`)
+* **Communication:** Requires `window.pluginAPI.terminal` IPC methods (`create`, `input`, `resize`, `onData`, `dispose`) to be exposed by the host environment.

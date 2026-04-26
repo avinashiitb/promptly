@@ -70,9 +70,16 @@ function TerminalView({ sessionId, setIsReady, theme }) {
 
     if (proxy) {
       console.log(`[Plugin Frontend] Setting up IPC proxy listener for ${sessionId}...`);
+      let isFirstData = true;
       unsubscribeData = proxy.onData(sessionId, (data) => {
         console.log(`[Plugin Frontend] Received stdout (${data?.length || 0} bytes)`);
-        if (data) term.write(data);
+        if (data) {
+          if (isFirstData) {
+            term.write('\x1b[2K\x1b[G'); // Clear current line
+            isFirstData = false;
+          }
+          term.write(data);
+        }
       });
 
       term.onData((data) => {
@@ -85,6 +92,7 @@ function TerminalView({ sessionId, setIsReady, theme }) {
       });
 
       console.log(`[Plugin Frontend] Requesting terminal create/reconnect against main process for ${sessionId}...`);
+      term.write('\x1b[3m\x1b[90mStarting terminal session...\x1b[0m');
       proxy.create(sessionId);
       
       setIsReady(true);
