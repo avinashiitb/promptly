@@ -94,7 +94,13 @@ function TerminalView({ sessionId, setIsReady, theme }) {
       console.log(`[Plugin Frontend] Requesting terminal create/reconnect against main process for ${sessionId}...`);
       term.write('\x1b[3m\x1b[90mStarting terminal session...\x1b[0m');
       proxy.create(sessionId);
-      
+
+      // Global helper so custom blocks can write to this terminal
+      window.__terminalWrite = (sid, text) => {
+        if (sid === sessionId) proxy.input(sessionId, text);
+      };
+      window.__terminalSessionId = sessionId;
+
       setIsReady(true);
     } else {
       term.write('\r\n\x1b[31mError: Terminal IPC Bridge missing (terminalAPI or pluginAPI.terminal).\x1b[0m\r\n');

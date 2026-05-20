@@ -1,140 +1,88 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
+import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
+import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions';
+import {
+  useCreateBlockNote,
+  getDefaultReactSlashMenuItems,
+  SuggestionMenuController,
+} from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
+import '@blocknote/mantine/style.css';
+import '@blocknote/core/fonts/inter.css';
+import { createTerminalBlock } from '../tools/TerminalBlock';
 
-function Scratchpad({ commands, setCommands, sessionId, leftPaneWidth, ObjectUrlId }) {
-  const executeCommand = (id) => {
-    const proxy = window.terminalAPI || window.pluginAPI?.terminal;
-    const cmd = commands.find(c => c.id === id);
-    if (proxy && cmd && cmd.text.trim()) {
-      proxy.input(sessionId, cmd.text + '\r');
-    }
-  };
+// Schema: all default blocks + custom terminal block
+const schema = BlockNoteSchema.create().extend({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    terminal: createTerminalBlock(),
+  },
+});
 
-  const handleKeyDown = (e, id) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      executeCommand(id);
-    }
-  };
+// Slash menu item that inserts a Terminal block
+const insertTerminalItem = (editor) => ({
+  title: 'Terminal',
+  subtext: 'Run bash commands in the terminal',
+  aliases: ['bash', 'shell', 'command', 'run', 'terminal', 'code'],
+  group: 'Commands',
+  icon: (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" strokeWidth="2">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  ),
+  onItemClick: () => {
+    insertOrUpdateBlockForSlashMenu(editor, { type: 'terminal', props: { code: '' } });
+  },
+});
 
-  const updateCommandText = (id, newText) => {
-    setCommands(prev => prev.map(c => c.id === id ? { ...c, text: newText } : c));
-  };
+// Only the 5 items the user needs
+const ALLOWED_TITLES = new Set([
+  'Heading 3',
+  'Paragraph',
+  'Bullet List',
+  'Numbered List',
+]);
 
-  const updateCommandTitle = (id, newTitle) => {
-    setCommands(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
-  };
+const getSlashMenuItems = (editor) => {
+  const defaults = getDefaultReactSlashMenuItems(editor).filter(
+    (item) => ALLOWED_TITLES.has(item.title)
+  );
+  return [...defaults, insertTerminalItem(editor)];
+};
 
-  const addCommandBlock = () => {
-    setCommands(prev => [...prev, { id: ObjectUrlId(), text: '' }]);
-  };
+function Scratchpad({ editorData, onSave, leftPaneWidth, theme }) {
+  const isDark = theme === 'dark-theme';
 
-  const removeCommandBlock = (id) => {
-    setCommands(prev => prev.filter(c => c.id !== id));
-  };
-
-  const dragItem = useRef();
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-
-  const handleDragStart = (e, index) => {
-    dragItem.current = index;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      e.preventDefault();
-      return;
-    }
-    setTimeout(() => {
-      e.target.style.opacity = '0.5';
-    }, 0);
-  };
-
-  const handleDragEnter = (e, index) => {
-    setDragOverIndex(index);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDragEnd = (e) => {
-    e.target.style.opacity = '1';
-    
-    if (dragItem.current != null && dragOverIndex != null && dragItem.current !== dragOverIndex) {
-      setCommands(prev => {
-        const newCommands = [...prev];
-        const draggedCommand = newCommands[dragItem.current];
-        
-        if (!draggedCommand) return prev;
-        
-        newCommands.splice(dragItem.current, 1);
-        newCommands.splice(dragOverIndex, 0, draggedCommand);
-        return newCommands;
-      });
-    }
-    dragItem.current = null;
-    setDragOverIndex(null);
-  };
+  const editor = useCreateBlockNote({
+    schema,
+    initialContent:
+      Array.isArray(editorData) && editorData.length > 0
+        ? editorData
+        : undefined,
+  });
 
   return (
-    <div className="left-pane" style={{ width: `${leftPaneWidth}%`, flex: 'none' }}>
-      <div className="scratchpad-header">
-        <span>Command Scratchpad</span>
-      </div>
-      <div className="commands-list">
-        {commands.map((cmd, index) => {
-          let dragClass = '';
-          if (dragOverIndex === index && dragItem.current != null && dragItem.current !== index) {
-            if (dragItem.current > index) {
-              dragClass = 'drag-over-top';
-            } else {
-              dragClass = 'drag-over-bottom';
-            }
+    <div
+      className={`scratchpad-pane ${theme}`}
+      style={{ width: `${leftPaneWidth}%`, flex: 'none', paddingLeft: '40px', paddingRight: "15px" }}
+    >
+      {/* slashMenu={false} disables the built-in menu so we render our own */}
+      <BlockNoteView
+        editor={editor}
+        onChange={() => onSave?.(editor.document)}
+        theme={isDark ? 'dark' : 'light'}
+        className="scratchpad-bn-view"
+        slashMenu={false}
+      >
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={async (query) =>
+            filterSuggestionItems(getSlashMenuItems(editor), query)
           }
-
-          return (
-          <div 
-            key={cmd.id} 
-            className={`command-block ${dragClass}`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragEnter={(e) => handleDragEnter(e, index)}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-            style={{ cursor: 'grab' }}
-          >
-            <div className="command-actions" style={{ cursor: 'default' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
-                  <i className="ri-drag-move-2-fill" style={{ color: '#9CA3AF', cursor: 'grab', fontSize: '14px' }} title="Drag to reorder"></i>
-                  <input 
-                    className="command-title-input command-number" 
-                    value={cmd.title !== undefined ? cmd.title : ''} 
-                    onChange={(e) => updateCommandTitle(cmd.id, e.target.value)}
-                    placeholder={`CMD ${index + 1}`}
-                    title="Rename command block"
-                    spellCheck={false}
-                  />
-                </div>
-                <div className="command-btn-group">
-                  <button className="icon-btn" onClick={() => executeCommand(cmd.id)} title="Run">
-                    <i className="ri-play-fill run-icon"></i>
-                  </button>
-                  <button className="icon-btn" onClick={() => removeCommandBlock(cmd.id)} title="Remove">
-                    <i className="ri-delete-bin-line remove-icon"></i>
-                  </button>
-                </div>
-            </div>
-            <textarea
-              className="scratchpad-textarea block-textarea"
-              value={cmd.text}
-              onChange={(e) => updateCommandText(cmd.id, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, cmd.id)}
-              placeholder="Type shell command...&#10;Enter to run, Shift+Enter for newline."
-              spellCheck={false}
-            />
-          </div>
-        )})}
-      </div>
-      <button className="add-command-btn" onClick={addCommandBlock}>
-        <i className="ri-add-line"></i> Add Command Block
-      </button>
+        />
+      </BlockNoteView>
     </div>
   );
 }
