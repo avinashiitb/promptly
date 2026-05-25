@@ -1,13 +1,24 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createReactBlockSpec } from '@blocknote/react';
-
-const MAX_HEIGHT = 800; // px
 
 const TerminalBlockRender = ({ block, editor }) => {
   const textareaRef = useRef(null);
   const [running, setRunning] = useState(false);
 
-  /* ── run handler ── */
+  /* ── Auto-resize to fit full content ── */
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';          // shrink first
+    el.style.height = el.scrollHeight + 'px'; // then grow to content
+  }, []);
+
+  // Resize once on mount so saved content renders at correct height
+  useEffect(() => {
+    autoResize();
+  }, [autoResize]);
+
+  /* ── Run handler ── */
   const run = () => {
     const code  = textareaRef.current?.value?.trim();
     if (!code) return;
@@ -37,6 +48,7 @@ const TerminalBlockRender = ({ block, editor }) => {
   };
 
   const onChange = (e) => {
+    autoResize();
     editor.updateBlock(block, { props: { code: e.target.value } });
   };
 
@@ -74,7 +86,7 @@ const TerminalBlockRender = ({ block, editor }) => {
         </button>
       </div>
 
-      {/* ── Code textarea ── */}
+      {/* ── Code textarea (auto-height) ── */}
       <div className="tn-editor-row">
         <textarea
           ref={textareaRef}
@@ -85,7 +97,6 @@ const TerminalBlockRender = ({ block, editor }) => {
           spellCheck={false}
           onKeyDown={onKeyDown}
           onChange={onChange}
-          style={{ maxHeight: MAX_HEIGHT }}
         />
       </div>
     </div>

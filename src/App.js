@@ -9,6 +9,7 @@ function App() {
 
   const [isReady,       setIsReady]       = useState(false);
   const [fileName,      setFileName]      = useState('Promptly');
+  const [breadcrumbs,   setBreadcrumbs]   = useState([]);
   // editorData is the INITIAL content passed to BlockNote on first mount.
   // After mount, current blocks are tracked via editorDataRef (no re-renders).
   const [editorData,    setEditorData]    = useState(null);
@@ -87,6 +88,19 @@ function App() {
         try {
           const fileInfo = await window.pluginAPI.getFileDetailsById(fileId);
           if (fileInfo?.title) setFileName(fileInfo.title);
+
+          // Fetch breadcrumb path
+          if (window.pluginAPI.getNestedPath && fileId !== `term-${fileId.split('-')[1]}`) {
+            window.pluginAPI.getNestedPath({ fileId }).then((result) => {
+              if (result) {
+                const segs = [
+                  ...result.folders.map((f) => ({ label: f.name, isFile: false })),
+                  ...(result.file ? [{ label: result.file.title, isFile: true }] : []),
+                ];
+                setBreadcrumbs(segs);
+              }
+            }).catch(() => {});
+          }
 
           const docs = await window.pluginAPI.getDocumentsByParentFile(fileId);
           console.log('[Promptly:load] docs returned:', docs?.length, 'doc(s)');
@@ -217,6 +231,7 @@ function App() {
   return (
     <div className={`App ${theme}`}>
       <TopBar
+        breadcrumbs={breadcrumbs}
         fileName={fileName}
         isReady={isReady}
         onExportDS={handleExportDS}

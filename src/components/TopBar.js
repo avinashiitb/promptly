@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-function TopBar({ fileName, isReady, onExportDS, theme, setTheme }) {
+function TopBar({ breadcrumbs = [], fileName, isReady, onExportDS, theme, setTheme }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -14,18 +14,34 @@ function TopBar({ fileName, isReady, onExportDS, theme, setTheme }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Build display segments: if breadcrumbs provided use them, else fallback to plain fileName
+  const displaySegments = breadcrumbs.length > 0
+    ? breadcrumbs
+    : [{ label: fileName || 'Promptly', isFile: true }];
+
   return (
     <header className="terminal-topbar">
       <div className="topbar-left">
-        <div className="editor-label">
-          <i className="ri-terminal-box-fill"></i>
-          <span>PROMPTLY</span>
-        </div>
-        <div className="vertical-divider"></div>
-        <div className="file-info">
-          <i className="ri-terminal-line file-type-icon"></i>
-          <span className="file-name">{fileName}</span>
-        </div>
+        <nav className="breadcrumb-path" aria-label="file path">
+          <i className="fa-solid fa-folder" style={{ marginRight: 6, fontSize: 11, opacity: 0.8 }}></i>
+          {displaySegments.map((seg, idx) => (
+            <React.Fragment key={idx}>
+              {!seg.isFile && (
+                <>
+                  <span className="breadcrumb-segment breadcrumb-folder" title={seg.label}>
+                    {seg.label}
+                  </span>
+                  <span className="breadcrumb-sep">›</span>
+                </>
+              )}
+              {seg.isFile && (
+                <span className="breadcrumb-segment breadcrumb-file" title={seg.label}>
+                  {seg.label}
+                </span>
+              )}
+            </React.Fragment>
+          ))}
+        </nav>
       </div>
       
       <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -11,7 +11,8 @@ import '@blocknote/mantine/style.css';
 import '@blocknote/core/fonts/inter.css';
 import { createTerminalBlock } from '../tools/TerminalBlock';
 
-// Schema: all default blocks + custom terminal block
+// Schema: default blocks + our custom Terminal block only
+// (Toggle Headings are already in defaultBlockSpecs — no need to add them)
 const schema = BlockNoteSchema.create().extend({
   blockSpecs: {
     ...defaultBlockSpecs,
@@ -37,9 +38,10 @@ const insertTerminalItem = (editor) => ({
   },
 });
 
-// Only the 5 items the user needs
-const ALLOWED_TITLES = new Set([
+// Slash menu — built-in Toggle Heading 3 + Paragraph + lists + Terminal
+const ALLOWED_DEFAULT_TITLES = new Set([
   'Heading 3',
+  'Toggle Heading 3',
   'Paragraph',
   'Bullet List',
   'Numbered List',
@@ -47,7 +49,7 @@ const ALLOWED_TITLES = new Set([
 
 const getSlashMenuItems = (editor) => {
   const defaults = getDefaultReactSlashMenuItems(editor).filter(
-    (item) => ALLOWED_TITLES.has(item.title)
+    (item) => ALLOWED_DEFAULT_TITLES.has(item.title)
   );
   return [...defaults, insertTerminalItem(editor)];
 };
@@ -66,7 +68,7 @@ function Scratchpad({ editorData, onSave, leftPaneWidth, theme }) {
   return (
     <div
       className={`scratchpad-pane ${theme}`}
-      style={{ width: `${leftPaneWidth}%`, flex: 'none', paddingLeft: '40px', paddingRight: "15px" }}
+      style={{ width: `${leftPaneWidth}%`, flex: 'none', paddingLeft: "20px" }}
     >
       {/* slashMenu={false} disables the built-in menu so we render our own */}
       <BlockNoteView
