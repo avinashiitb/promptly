@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { SearchAddon } from '@xterm/addon-search';
 import '@xterm/xterm/css/xterm.css';
 
 /* ── Inline SVGs for Terminal toolbar & History logs ── */
@@ -29,6 +30,10 @@ const I = {
   eraser:  <Ic d={["M4 19h16", "m3.5 14.5 6-6 6 6-4 4h-4z", "m9.5 8.5 5-5 6 6-5 5"]} />,
   expand:  <Ic d={["M4 9V4h5", "M20 9V4h-5", "M4 15v5h5", "M20 15v5h-5"]} />,
   history: <Ic d={["M12 3a9 9 0 1 1-8.49 12", "M12 8v4.2l3 1.8", "M3 4.5v4h4"]} />,
+  search:  <Ic d={["M10.5 3a7.5 7.5 0 1 0 7.5 7.5 7.5 7.5 0 0 0-7.5-7.5Z", "m21 21-4.3-4.3"]} />,
+  up:      <Ic d="m18 15-6-6-6 6" />,
+  down:    <Ic d="m6 9 6 6 6-6" />,
+  close:   <Ic d={["M18 6 6 18", "M6 6l12 12"]} />,
 };
 
 function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, tab, setTab }) {
@@ -36,6 +41,83 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
   const termInstance = useRef(null);
   const fitAddon = useRef(null);
   const themeRef = useRef(theme);
+
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchAddonInstance = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Global keydown helper to toggle search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        if (tab === 'terminal') {
+          e.preventDefault();
+          setShowSearch(true);
+          setTimeout(() => {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+          }, 50);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [tab]);
+
+  const handleSearchChange = (e) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (q && searchAddonInstance.current) {
+      searchAddonInstance.current.findNext(q, { incremental: true });
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchQuery && searchAddonInstance.current) {
+        if (e.shiftKey) {
+          searchAddonInstance.current.findPrevious(searchQuery);
+        } else {
+          searchAddonInstance.current.findNext(searchQuery);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      handleCloseSearch();
+    }
+  };
+
+  const handleSearchPrev = () => {
+    if (searchQuery && searchAddonInstance.current) {
+      searchAddonInstance.current.findPrevious(searchQuery);
+    }
+  };
+
+  const handleSearchNext = () => {
+    if (searchQuery && searchAddonInstance.current) {
+      searchAddonInstance.current.findNext(searchQuery);
+    }
+  };
+
+  const handleCloseSearch = () => {
+    setShowSearch(false);
+    setSearchQuery('');
+    termInstance.current?.focus();
+  };
+
+  const handleToggleSearch = () => {
+    setShowSearch((prev) => {
+      const next = !prev;
+      if (next) {
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        }, 50);
+      }
+      return next;
+    });
+  };
 
   // Sync theme
   useEffect(() => {
@@ -79,9 +161,11 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
 
     const fit = new FitAddon();
     const webLinks = new WebLinksAddon();
+    const searchAddon = new SearchAddon();
 
     term.loadAddon(fit);
     term.loadAddon(webLinks);
+    term.loadAddon(searchAddon);
     term.open(terminalRef.current);
 
     setTimeout(() => {
@@ -90,6 +174,7 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
 
     termInstance.current = term;
     fitAddon.current = fit;
+    searchAddonInstance.current = searchAddon;
 
     const proxy = window.terminalAPI || window.pluginAPI?.terminal;
     let unsubscribeData;
@@ -180,9 +265,14 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
         <span className="term-sub">shell · active</span>
         <span className="spacer" />
         {tab === 'terminal' ? (
-          <button className="term-act" title="Clear terminal" onClick={() => termInstance.current?.clear()}>
-            {I.eraser}
-          </button>
+          <>
+            <button className={`term-act${showSearch ? ' active' : ''}`} title="Search log (⌘F)" onClick={handleToggleSearch}>
+              {I.search}
+            </button>
+            <button className="term-act" title="Clear terminal" onClick={() => termInstance.current?.clear()}>
+              {I.eraser}
+            </button>
+          </>
         ) : (
           <button className="term-act" title="Clear history" onClick={() => setHistory([])}>
             {I.trash}
@@ -198,7 +288,30 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
         className="terminal-container"
         ref={terminalRef}
         style={{ display: tab === 'terminal' ? 'block' : 'none' }}
-      />
+      >
+        {tab === 'terminal' && showSearch && (
+          <div className="term-search-overlay" onClick={(e) => e.stopPropagation()}>
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="term-search-input"
+              placeholder="Find in logs..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+            />
+            <button className="term-search-btn" title="Previous match (Shift+Enter)" onClick={handleSearchPrev}>
+              {I.up}
+            </button>
+            <button className="term-search-btn" title="Next match (Enter)" onClick={handleSearchNext}>
+              {I.down}
+            </button>
+            <button className="term-search-btn close" title="Close search (Esc)" onClick={handleCloseSearch}>
+              {I.close}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── History Panel ── */}
       {tab === 'history' && (
