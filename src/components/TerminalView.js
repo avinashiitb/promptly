@@ -4,49 +4,77 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
-function TerminalView({ sessionId, setIsReady, theme }) {
+/* ── Inline SVGs for Terminal toolbar & History logs ── */
+const Ic = ({ d, fill, size = 16, sw = 2 }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill={fill ? "currentColor" : "none"}
+    stroke={fill ? "none" : "currentColor"}
+    strokeWidth={sw}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
+  </svg>
+);
+
+const I = {
+  chev:    <Ic d="m9 6 6 6-6 6" />,
+  check:   <Ic d="m4.5 12.5 5 5 10-11" sw={2.6} />,
+  warn:    <Ic d={["M12 4 2.5 20h19z", "M12 10v4", "M12 17.5v.5"]} sw={2.2} />,
+  x:       <Ic d={["M6 6l12 12", "M18 6 6 18"]} sw={2.6} />,
+  trash:   <Ic d={["M4 7h16", "M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2", "m6 7 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"]} />,
+  eraser:  <Ic d={["M4 19h16", "m3.5 14.5 6-6 6 6-4 4h-4z", "m9.5 8.5 5-5 6 6-5 5"]} />,
+  expand:  <Ic d={["M4 9V4h5", "M20 9V4h-5", "M4 15v5h5", "M20 15v5h-5"]} />,
+  history: <Ic d={["M12 3a9 9 0 1 1-8.49 12", "M12 8v4.2l3 1.8", "M3 4.5v4h4"]} />,
+};
+
+function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, tab, setTab }) {
   const terminalRef = useRef(null);
   const termInstance = useRef(null);
   const fitAddon = useRef(null);
-
   const themeRef = useRef(theme);
 
+  // Sync theme
   useEffect(() => {
     themeRef.current = theme;
     if (termInstance.current) {
       termInstance.current.options.theme = theme === 'light-theme' ? {
-        background: '#ffffff',
-        foreground: '#111827',
-        cursor: '#111827',
+        background: '#f6f8fa',
+        foreground: '#1f2328',
+        cursor: '#1f2328',
         selectionBackground: '#e5e7eb',
       } : {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
+        background: '#0b0f14',
+        foreground: '#cdd9e5',
         cursor: '#ffffff',
         selectionBackground: '#264F78',
       };
     }
   }, [theme]);
 
+  // Setup Xterm.js
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Initialize Xterm
     const term = new Terminal({
       cursorBlink: true,
       theme: themeRef.current === 'light-theme' ? {
-        background: '#ffffff',
-        foreground: '#111827',
-        cursor: '#111827',
+        background: '#f6f8fa',
+        foreground: '#1f2328',
+        cursor: '#1f2328',
         selectionBackground: '#e5e7eb',
       } : {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
+        background: '#0b0f14',
+        foreground: '#cdd9e5',
         cursor: '#ffffff',
         selectionBackground: '#264F78',
       },
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      fontSize: 14,
+      fontSize: 13,
+      lineHeight: 1.25,
     });
 
     const fit = new FitAddon();
@@ -54,10 +82,8 @@ function TerminalView({ sessionId, setIsReady, theme }) {
 
     term.loadAddon(fit);
     term.loadAddon(webLinks);
-
     term.open(terminalRef.current);
-    
-    // Fit must be delayed slightly on remount or it causes crash loops in xterm
+
     setTimeout(() => {
       try { fit.fit(); } catch (e) { console.warn("Fit error", e); }
     }, 50);
@@ -69,10 +95,9 @@ function TerminalView({ sessionId, setIsReady, theme }) {
     let unsubscribeData;
 
     if (proxy) {
-      console.log(`[Plugin Frontend] Setting up IPC proxy listener for ${sessionId}...`);
+      console.log(`[Promptly:Terminal] Setting up IPC proxy listener for ${sessionId}...`);
       let isFirstData = true;
       unsubscribeData = proxy.onData(sessionId, (data) => {
-        console.log(`[Plugin Frontend] Received stdout (${data?.length || 0} bytes)`);
         if (data) {
           if (isFirstData) {
             term.write('\x1b[2K\x1b[G'); // Clear current line
@@ -83,7 +108,6 @@ function TerminalView({ sessionId, setIsReady, theme }) {
       });
 
       term.onData((data) => {
-        console.log(`[Plugin Frontend] User typed input`);
         proxy.input(sessionId, data);
       });
 
@@ -91,11 +115,9 @@ function TerminalView({ sessionId, setIsReady, theme }) {
         proxy.resize(sessionId, size.cols, size.rows);
       });
 
-      console.log(`[Plugin Frontend] Requesting terminal create/reconnect against main process for ${sessionId}...`);
-      term.write('\x1b[3m\x1b[90mStarting terminal session...\x1b[0m');
       proxy.create(sessionId);
 
-      // Global helper so custom blocks can write to this terminal
+      // Global helpers for Command Runner
       window.__terminalWrite = (sid, text) => {
         if (sid === sessionId) proxy.input(sessionId, text);
       };
@@ -104,13 +126,11 @@ function TerminalView({ sessionId, setIsReady, theme }) {
       setIsReady(true);
     } else {
       term.write('\r\n\x1b[31mError: Terminal IPC Bridge missing (terminalAPI or pluginAPI.terminal).\x1b[0m\r\n');
-      term.write('\r\nEnsure you have added core-integration files to your Electron main process.\r\n');
     }
 
-    // Auto-resize handler
     const handleResize = () => {
       if (fitAddon.current) {
-        fitAddon.current.fit();
+        try { fitAddon.current.fit(); } catch {}
       }
     };
     window.addEventListener('resize', handleResize);
@@ -118,15 +138,110 @@ function TerminalView({ sessionId, setIsReady, theme }) {
     return () => {
       window.removeEventListener('resize', handleResize);
       if (unsubscribeData) unsubscribeData();
-      if (proxy) {
-        proxy.dispose(sessionId);
-      }
+      if (proxy) proxy.dispose(sessionId);
       term.dispose();
     };
   }, [sessionId, setIsReady]);
 
+  // Fit terminal when tab switches back to 'terminal'
+  useEffect(() => {
+    if (tab === 'terminal' && fitAddon.current) {
+      setTimeout(() => {
+        try { fitAddon.current.fit(); } catch {}
+      }, 50);
+    }
+  }, [tab]);
+
+  // Re-run command from history click
+  const handleReRun = (cmd) => {
+    const sid = window.__terminalSessionId;
+    const write = window.__terminalWrite;
+    if (write && sid) {
+      setTab('terminal');
+      write(sid, cmd + '\r');
+    }
+  };
+
+  const statIcon = (s) => s === "running" ? <span className="spin" style={{ width: 11, height: 11 }} />
+    : s === "ok" ? I.check : s === "warn" ? I.warn : s === "error" ? I.x : null;
+
   return (
-    <div className="terminal-container" ref={terminalRef}></div>
+    <>
+      {/* ── Terminal Header ── */}
+      <div className="term-head">
+        <div className="term-tabs">
+          <button className={`term-tab${tab === 'terminal' ? ' active' : ''}`} onClick={() => setTab('terminal')}>
+            <span className="tdot" />Terminal
+          </button>
+          <button className={`term-tab${tab === 'history' ? ' active' : ''}`} onClick={() => setTab('history')}>
+            {I.history}History{history.length > 0 && <span className="ttab-count">{history.length}</span>}
+          </button>
+        </div>
+        <span className="term-sub">shell · active</span>
+        <span className="spacer" />
+        {tab === 'terminal' ? (
+          <button className="term-act" title="Clear terminal" onClick={() => termInstance.current?.clear()}>
+            {I.eraser}
+          </button>
+        ) : (
+          <button className="term-act" title="Clear history" onClick={() => setHistory([])}>
+            {I.trash}
+          </button>
+        )}
+        <button className="term-act" title="Maximize">
+          {I.expand}
+        </button>
+      </div>
+
+      {/* ── Terminal Canvas (display: none when inactive to retain process state) ── */}
+      <div
+        className="terminal-container"
+        ref={terminalRef}
+        style={{ display: tab === 'terminal' ? 'block' : 'none' }}
+      />
+
+      {/* ── History Panel ── */}
+      {tab === 'history' && (
+        <div className="hist">
+          {history.length === 0 ? (
+            <div className="hist-empty">
+              {I.history}
+              <p>No commands run yet. Every command you run from a step is logged here.</p>
+            </div>
+          ) : (
+            <>
+              <div className="hist-day">Today</div>
+              {[...history].reverse().map((h, i) => (
+                <div key={h.id || i} className="hrow" onClick={() => handleReRun(h.cmd)} title="Click to re-run in terminal">
+                  <span className="hidx">{String(history.length - i).padStart(2, "0")}</span>
+                  <span className={`hicon ${h.status}`}>{statIcon(h.status)}</span>
+                  <span className="hmain">
+                    <span className="hcmd">{h.cmd.replace(/\\\n\s*/g, " ")}</span>
+                    <span className="hmeta">
+                      {h.title && (
+                        <>
+                          <span className="htitle">{h.title}</span>
+                          <span className="hsep">·</span>
+                        </>
+                      )}
+                      <span className={`hstat ${h.status}`}>{h.status === 'running' ? 'running' : 'completed'}</span>
+                      {h.dur && (
+                        <>
+                          <span className="hsep">·</span>
+                          <span>{h.dur}</span>
+                        </>
+                      )}
+                    </span>
+                  </span>
+                  <span className="htime">{h.time}</span>
+                  <span className="hjump">{I.chev}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
