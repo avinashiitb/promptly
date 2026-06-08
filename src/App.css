@@ -86,7 +86,7 @@
   box-sizing: border-box;
 }
 
-body, html {
+body, html, #root {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -100,7 +100,7 @@ body, html {
 .App {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background-color: var(--bg);
   color: var(--fg);
 }
@@ -274,28 +274,26 @@ body, html {
 }
 
 .pane-resizer {
-  flex: 0 0 9px;
+  flex: 0 0 4px;
   cursor: col-resize;
   position: relative;
-  background: transparent;
+  background-color: transparent;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: background-color 0.15s;
 }
 
-.pane-resizer::before {
-  content: "";
-  position: absolute;
-  inset: 0 4px;
-  background: var(--border-soft);
-  border-radius: 2px;
-  transition: background 0.12s;
+.pane-resizer:hover,
+.pane-resizer:active {
+  background-color: #007ACC;
 }
 
-.pane-resizer:hover::before,
-.pane-resizer:active::before {
-  background: var(--accent);
+body.dragging * {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+body.dragging .pane-resizer {
+  pointer-events: auto !important;
 }
 
 .right-pane {
@@ -1161,7 +1159,7 @@ body, html {
   background-color: var(--t-bg);
   padding: 12px 16px;
   overflow: hidden;
-  height: 100%;
+  min-height: 0;
 }
 
 .terminal-container .xterm {

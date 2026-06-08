@@ -81,12 +81,13 @@ function App() {
   const [active, setActive] = useState(null);
   const [running, setRunning] = useState(false);
 
-  const [leftPaneWidth, setLeftPaneWidth] = useState(48);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(50);
   const [theme, setTheme] = useState('light-theme');
   const isDragging = useRef(false);
 
   const [contentDoc, setContentDoc] = useState(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const versionRef = useRef(1);
 
   const [fileId] = useState(() => {
     let id = window.pluginAPI?.context?.fileId;
@@ -103,6 +104,13 @@ function App() {
   const [sessionId] = useState(() => `sess-${genId()}`);
 
   // ── Pane resizer ──
+  const handleMouseDown = useCallback((e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.classList.add('dragging');
+  }, []);
+
   const handleMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
     const w = (e.clientX / window.innerWidth) * 100;
@@ -113,6 +121,7 @@ function App() {
     if (isDragging.current) {
       isDragging.current = false;
       document.body.style.cursor = 'default';
+      document.body.classList.remove('dragging');
       window.dispatchEvent(new Event('resize'));
     }
   }, []);
@@ -222,16 +231,57 @@ function App() {
       theme,
     };
 
+    const currentVersion = versionRef.current;
+
     try {
-      await window.pluginAPI.updateDocument(fileId, [{
-        version: '1.0.0',
+      const result = await window.pluginAPI.updateDocument(fileId, [{
+        version: currentVersion,
         time: Date.now(),
         blocks: [{ type: 'promptly', data: payload }],
         parent_file: fileId,
         _id: contentDoc?._id,
       }]);
-    } catch (err) { console.error('[Promptly:save] Save error:', err); }
+
+      if (result) {
+        versionRef.current = currentVersion + 1;
+        setContentDoc(prev => prev ? { ...prev, version: currentVersion + 1 } : null);
+      }
+    } catch (err) {
+      console.error('[Promptly:save] Save error:', err);
+      const message = typeof err === 'string' ? err : err?.message || '';
+      if (message.includes('VERSION_CONFLICT')) {
+        console.warn('⚠️ Version conflict detected inside Promptly → refreshing from backend');
+        try {
+          const docs = await window.pluginAPI.getDocumentsByParentFile(fileId);
+          if (docs?.length > 0) {
+            const latest = docs[0];
+            versionRef.current = Number(latest.version) || 1;
+            setContentDoc(latest);
+
+            let saved = latest?.blocks?.[0]?.data;
+            if (typeof saved === 'string') {
+              try { saved = JSON.parse(saved); } catch { }
+            }
+            if (saved && typeof saved === 'object') {
+              if (Array.isArray(saved.groups) && saved.groups.length > 0) {
+                groupsRef.current = saved.groups;
+                setGroups(saved.groups);
+              }
+              if (saved.leftPaneWidth) setLeftPaneWidth(saved.leftPaneWidth);
+              if (saved.theme) setTheme(saved.theme);
+            }
+          }
+        } catch (fetchError) {
+          console.error('❌ Failed to refresh after version conflict:', fetchError);
+        }
+      }
+    }
   }, [leftPaneWidth, theme, fileId, contentDoc, isDataLoaded]);
+
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   // ── Load ──
   useEffect(() => {
@@ -258,6 +308,7 @@ function App() {
           if (docs?.length > 0) {
             const doc = docs[0];
             setContentDoc(doc);
+            versionRef.current = Number(doc?.version) || 1;
 
             let saved = doc?.blocks?.[0]?.data;
             if (typeof saved === 'string') {
@@ -274,13 +325,13 @@ function App() {
                 const migrated = parseBlocksToGroups(saved.editorBlocks);
                 groupsRef.current = migrated;
                 setGroups(migrated);
-                setTimeout(() => handleSave(migrated), 500);
+                setTimeout(() => handleSaveRef.current(migrated), 500);
               } else if (Array.isArray(saved.commands) && saved.commands.length > 0) {
                 console.log('[Promptly:load] 🔄 Legacy format — migrating commands:', saved.commands.length);
                 const migrated = parseLegacyToGroups(saved.commands);
                 groupsRef.current = migrated;
                 setGroups(migrated);
-                setTimeout(() => handleSave(migrated), 500);
+                setTimeout(() => handleSaveRef.current(migrated), 500);
               }
               if (saved.leftPaneWidth) setLeftPaneWidth(saved.leftPaneWidth);
               if (saved.theme) setTheme(saved.theme);
@@ -293,7 +344,7 @@ function App() {
       setIsDataLoaded(true);
     };
     setTimeout(load, 100);
-  }, [fileId, parseBlocksToGroups, parseLegacyToGroups, handleSave]);
+  }, [fileId, parseBlocksToGroups, parseLegacyToGroups]);
 
   // Sync state triggers auto-save
   const updateGroupsState = useCallback((newGroups) => {
@@ -503,6 +554,7 @@ function App() {
     try {
       const blob = new Blob([JSON.stringify({
         _id: contentDoc?._id || `promptly-${Date.now()}`,
+        version: contentDoc?.version || 1,
         parent_file: fileId,
         blocks: [{ type: 'promptly', data: { groups, leftPaneWidth } }],
         fileType: 'promptly',
@@ -557,14 +609,10 @@ function App() {
 
         <div
           className="pane-resizer"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            isDragging.current = true;
-            document.body.style.cursor = 'col-resize';
-          }}
+          onMouseDown={handleMouseDown}
         />
 
-        <div className="right-pane" style={{ width: `${100 - leftPaneWidth}%`, flex: 'none' }}>
+        <div className="right-pane" style={{ width: `calc(${100 - leftPaneWidth}% - 4px)`, flex: 'none' }}>
           <TerminalView
             sessionId={sessionId}
             setIsReady={setIsReady}
