@@ -70,6 +70,8 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
     setSearchQuery(q);
     if (q && searchAddonInstance.current) {
       searchAddonInstance.current.findNext(q, { incremental: true });
+    } else {
+      termInstance.current?.clearSelection();
     }
   };
 
@@ -103,6 +105,7 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
   const handleCloseSearch = () => {
     setShowSearch(false);
     setSearchQuery('');
+    termInstance.current?.clearSelection();
     termInstance.current?.focus();
   };
 
@@ -114,6 +117,9 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
           searchInputRef.current?.focus();
           searchInputRef.current?.select();
         }, 50);
+      } else {
+        setSearchQuery('');
+        termInstance.current?.clearSelection();
       }
       return next;
     });
@@ -127,12 +133,12 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
         background: '#f6f8fa',
         foreground: '#1f2328',
         cursor: '#1f2328',
-        selectionBackground: '#e5e7eb',
+        selectionBackground: '#22c55e50',
       } : {
         background: '#0b0f14',
         foreground: '#cdd9e5',
         cursor: '#ffffff',
-        selectionBackground: '#264F78',
+        selectionBackground: '#22c55e40',
       };
     }
   }, [theme]);
@@ -147,12 +153,12 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
         background: '#f6f8fa',
         foreground: '#1f2328',
         cursor: '#1f2328',
-        selectionBackground: '#e5e7eb',
+        selectionBackground: '#22c55e50',
       } : {
         background: '#0b0f14',
         foreground: '#cdd9e5',
         cursor: '#ffffff',
-        selectionBackground: '#264F78',
+        selectionBackground: '#22c55e40',
       },
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       fontSize: 13,
