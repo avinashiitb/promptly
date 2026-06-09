@@ -28,11 +28,41 @@ const I = {
   plus:   <Ic d={["M12 5v14", "M5 12h14"]} />,
   trash:  <Ic d={["M4 7h16", "M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2", "m6 7 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"]} />,
   note:   <Ic d={["M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z", "M8 8.5h8", "M8 12h8", "M8 15.5h5"]} />,
+  grip: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+      <circle cx="9" cy="5" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="9" cy="19" r="2" />
+      <circle cx="15" cy="5" r="2" />
+      <circle cx="15" cy="12" r="2" />
+      <circle cx="15" cy="19" r="2" />
+    </svg>
+  ),
 };
 
 /* ════ STEP CARD ════════════════════════════════════════════════════ */
-function StepCard({ idx, step, state, active, collapsed, onToggle, onRun, onEdit, onTitle, onJump, onDelete }) {
+function StepCard({
+  idx,
+  step,
+  state,
+  active,
+  collapsed,
+  onToggle,
+  onRun,
+  onEdit,
+  onTitle,
+  onJump,
+  onDelete,
+  draggedItemId,
+  dragOverItemId,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}) {
   const taRef = useRef(null);
+  const [dragEnabled, setDragEnabled] = React.useState(false);
 
   const fit = (el) => {
     if (el) {
@@ -60,9 +90,38 @@ function StepCard({ idx, step, state, active, collapsed, onToggle, onRun, onEdit
     e.stopPropagation();
   };
 
+  const isDragging = step.id === draggedItemId;
+  const isDragOver = step.id === dragOverItemId;
+
   return (
-    <div className={`step${active ? " active" : ""}${st === "running" ? " running" : ""}${collapsed ? " collapsed" : ""}`} id={`step-${step.id}`}>
+    <div
+      className={`step${active ? " active" : ""}${st === "running" ? " running" : ""}${collapsed ? " collapsed" : ""}${isDragging ? " dragging" : ""}${isDragOver ? " drag-over" : ""}`}
+      id={`step-${step.id}`}
+      draggable={dragEnabled}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => {
+        e.stopPropagation();
+        onDragOver(e);
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+        onDragLeave();
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        onDrop(e);
+      }}
+    >
       <div className="step-head">
+        <div
+          className="drag-handle"
+          title="Drag to reorder"
+          onMouseEnter={() => setDragEnabled(true)}
+          onMouseLeave={() => setDragEnabled(false)}
+        >
+          {I.grip}
+        </div>
         <button className="step-caret" title={collapsed ? "Expand step" : "Collapse step"} onClick={onToggle}>
           {I.caret}
         </button>
@@ -136,8 +195,21 @@ function StepCard({ idx, step, state, active, collapsed, onToggle, onRun, onEdit
 }
 
 /* ════ TEXT / NOTE BLOCK ════════════════════════════════════════════ */
-function TextBlock({ text, onEdit, onDelete }) {
+function TextBlock({
+  id,
+  text,
+  onEdit,
+  onDelete,
+  draggedItemId,
+  dragOverItemId,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}) {
   const ref = useRef(null);
+  const [dragEnabled, setDragEnabled] = React.useState(false);
 
   const fit = (el) => {
     if (el) {
@@ -150,9 +222,37 @@ function TextBlock({ text, onEdit, onDelete }) {
     fit(ref.current);
   }, [text]);
 
+  const isDragging = id === draggedItemId;
+  const isDragOver = id === dragOverItemId;
+
   return (
-    <div className="note">
+    <div
+      className={`note${isDragging ? " dragging" : ""}${isDragOver ? " drag-over" : ""}`}
+      draggable={dragEnabled}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => {
+        e.stopPropagation();
+        onDragOver(e);
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+        onDragLeave();
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        onDrop(e);
+      }}
+    >
       <div className="note-bar">
+        <div
+          className="drag-handle"
+          title="Drag to reorder"
+          onMouseEnter={() => setDragEnabled(true)}
+          onMouseLeave={() => setDragEnabled(false)}
+        >
+          {I.grip}
+        </div>
         <span className="note-tag">
           {I.note}
           Note
@@ -231,15 +331,35 @@ function GroupSection({
         </button>
       </div>
       {!group.collapsed && (
-        <div className="group-body">
+        <div
+          className="group-body"
+          onDragOver={(e) => {
+            if (stepHandlers.draggedItemId) {
+              e.preventDefault();
+            }
+          }}
+          onDrop={(e) => {
+            if (stepHandlers.draggedItemId) {
+              stepHandlers.onDrop(e, null, group.id);
+            }
+          }}
+        >
           {group.items.map((it) => {
             if (it.type === "text") {
               return (
                 <TextBlock
                   key={it.id}
+                  id={it.id}
                   text={it.text || ""}
                   onEdit={(t) => stepHandlers.editText(it.id, t)}
                   onDelete={() => stepHandlers.del(it.id)}
+                  draggedItemId={stepHandlers.draggedItemId}
+                  dragOverItemId={stepHandlers.dragOverItemId}
+                  onDragStart={() => stepHandlers.onDragStart(it.id, group.id)}
+                  onDragEnd={stepHandlers.onDragEnd}
+                  onDragOver={(e) => stepHandlers.onDragOver(e, it.id)}
+                  onDragLeave={() => stepHandlers.onDragLeave(it.id)}
+                  onDrop={(e) => stepHandlers.onDrop(e, it.id, group.id)}
                 />
               );
             }
@@ -258,6 +378,13 @@ function GroupSection({
                 onTitle={(t) => stepHandlers.editTitle(it.id, t)}
                 onJump={stepHandlers.jump}
                 onDelete={() => stepHandlers.del(it.id)}
+                draggedItemId={stepHandlers.draggedItemId}
+                dragOverItemId={stepHandlers.dragOverItemId}
+                onDragStart={() => stepHandlers.onDragStart(it.id, group.id)}
+                onDragEnd={stepHandlers.onDragEnd}
+                onDragOver={(e) => stepHandlers.onDragOver(e, it.id)}
+                onDragLeave={() => stepHandlers.onDragLeave(it.id)}
+                onDrop={(e) => stepHandlers.onDrop(e, it.id, group.id)}
               />
             );
           })}
@@ -295,6 +422,96 @@ function Scratchpad({
   runGroup,
   addItem,
 }) {
+  const [draggedItemId, setDraggedItemId] = React.useState(null);
+  const [draggedGroupId, setDraggedGroupId] = React.useState(null);
+  const [dragOverItemId, setDragOverItemId] = React.useState(null);
+
+  const handleDragStart = (itemId, groupId) => {
+    setDraggedItemId(itemId);
+    setDraggedGroupId(groupId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDraggedGroupId(null);
+    setDragOverItemId(null);
+  };
+
+  const handleDragOver = (e, itemId) => {
+    e.preventDefault();
+    if (draggedItemId === itemId) return;
+    setDragOverItemId(itemId);
+  };
+
+  const handleDragLeave = (itemId) => {
+    if (dragOverItemId === itemId) {
+      setDragOverItemId(null);
+    }
+  };
+
+  const handleDrop = (e, targetItemId, targetGroupId) => {
+    e.preventDefault();
+    if (!draggedItemId) {
+      handleDragEnd();
+      return;
+    }
+
+    if (targetItemId && draggedItemId === targetItemId) {
+      handleDragEnd();
+      return;
+    }
+
+    const newGroups = groups.map(g => ({
+      ...g,
+      items: [...g.items]
+    }));
+
+    // Find and remove source item
+    let sourceItem = null;
+    let sourceGroup = newGroups.find(g => g.id === draggedGroupId);
+    if (sourceGroup) {
+      const idx = sourceGroup.items.findIndex(it => it.id === draggedItemId);
+      if (idx !== -1) {
+        sourceItem = sourceGroup.items[idx];
+        sourceGroup.items.splice(idx, 1);
+      }
+    }
+
+    if (!sourceItem) {
+      handleDragEnd();
+      return;
+    }
+
+    // Find target and insert
+    let targetGroup = newGroups.find(g => g.id === targetGroupId);
+    if (targetGroup) {
+      if (targetItemId) {
+        const idx = targetGroup.items.findIndex(it => it.id === targetItemId);
+        if (idx !== -1) {
+          targetGroup.items.splice(idx, 0, sourceItem);
+        } else {
+          targetGroup.items.push(sourceItem);
+        }
+      } else {
+        targetGroup.items.push(sourceItem);
+      }
+    }
+
+    onGroupsChange(newGroups);
+    handleDragEnd();
+  };
+
+  const enhancedHandlers = {
+    ...stepHandlers,
+    draggedItemId,
+    dragOverItemId,
+    onDragStart: handleDragStart,
+    onDragEnd: handleDragEnd,
+    onDragOver: handleDragOver,
+    onDragLeave: handleDragLeave,
+    onDrop: handleDrop
+  };
+
   const allItems = groups.flatMap((g) => g.items);
   const cmdCount = allItems.filter((s) => s.type !== "text").length;
   const doneCount = Object.values(states).filter((s) =>
@@ -334,7 +551,7 @@ function Scratchpad({
                 onRunGroup={() => runGroup(g.id)}
                 onDelGroup={() => delGroup(g.id)}
                 onAddStep={(kind) => addItem(g.id, kind)}
-                stepHandlers={stepHandlers}
+                stepHandlers={enhancedHandlers}
               />
             );
             base += g.items.filter((i) => i.type !== "text").length;
