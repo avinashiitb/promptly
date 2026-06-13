@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import './App.css';
 import TopBar from './components/TopBar';
 import Scratchpad from './components/Scratchpad';
 import TerminalView from './components/TerminalView';
+import PromptlyPreview from './components/PromptlyPreview';
 
 const SEED = [
   {
@@ -66,6 +67,20 @@ const defaultGroups = [
 ];
 
 function App() {
+  const isPreview = useMemo(() => {
+    try {
+      const url = new URL(window.location.href);
+      let p = url.searchParams.get('preview');
+      if (!p && window.location.hash.includes('?')) {
+        const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+        p = hashParams.get('preview');
+      }
+      return p === 'true';
+    } catch {
+      return false;
+    }
+  }, []);
+
   const genId = () => Math.random().toString(36).substr(2, 9);
 
   const [isReady, setIsReady] = useState(false);
@@ -572,6 +587,10 @@ function App() {
       window.pluginAPI?.notify?.('Export failed', 'error');
     }
   };
+
+  if (isPreview) {
+    return <PromptlyPreview />;
+  }
 
   return (
     <div className={`App ${theme}`} data-theme={theme === 'dark-theme' ? 'dark' : 'light'}>
