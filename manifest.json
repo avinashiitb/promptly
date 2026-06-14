@@ -6,5 +6,7 @@
   "fileType": "promptly",
   "route": "/promptly/:file_id",
   "entry": "/build/index.html",
-  "icon": "build/Icons.svg"
+  "icon": "build/Icons.svg",
+  "preview": true,
+  "core-plugin": true
 }

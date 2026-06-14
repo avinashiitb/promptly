@@ -97,12 +97,20 @@ function App() {
   const [running, setRunning] = useState(false);
 
   const [leftPaneWidth, setLeftPaneWidth] = useState(50);
+  const [maximizedPane, setMaximizedPane] = useState(null); // 'scratchpad' | 'terminal' | null
   const [theme, setTheme] = useState('light-theme');
   const isDragging = useRef(false);
 
   const [contentDoc, setContentDoc] = useState(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const versionRef = useRef(1);
+
+  const toggleMaximize = useCallback((pane) => {
+    setMaximizedPane(current => current === pane ? null : pane);
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
+  }, []);
 
   const [fileId] = useState(() => {
     let id = window.pluginAPI?.context?.fileId;
@@ -623,15 +631,26 @@ function App() {
             editGroupTitle={editGroupTitle}
             runGroup={handleRunGroup}
             addItem={addItem}
+            maximizedPane={maximizedPane}
+            toggleMaximize={toggleMaximize}
+          />
+        )}
+
+        {maximizedPane === null && (
+          <div
+            className="pane-resizer"
+            onMouseDown={handleMouseDown}
           />
         )}
 
         <div
-          className="pane-resizer"
-          onMouseDown={handleMouseDown}
-        />
-
-        <div className="right-pane" style={{ width: `calc(${100 - leftPaneWidth}% - 4px)`, flex: 'none' }}>
+          className="right-pane"
+          style={{
+            width: maximizedPane === 'terminal' ? '100%' : `calc(${100 - leftPaneWidth}% - 4px)`,
+            display: maximizedPane === 'scratchpad' ? 'none' : 'flex',
+            flex: 'none'
+          }}
+        >
           <TerminalView
             sessionId={sessionId}
             setIsReady={setIsReady}
@@ -640,6 +659,8 @@ function App() {
             setHistory={setHistory}
             tab={tab}
             setTab={setTab}
+            maximizedPane={maximizedPane}
+            toggleMaximize={toggleMaximize}
           />
         </div>
       </div>

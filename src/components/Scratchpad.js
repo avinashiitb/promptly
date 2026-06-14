@@ -28,6 +28,8 @@ const I = {
   plus:   <Ic d={["M12 5v14", "M5 12h14"]} />,
   trash:  <Ic d={["M4 7h16", "M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2", "m6 7 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"]} />,
   note:   <Ic d={["M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z", "M8 8.5h8", "M8 12h8", "M8 15.5h5"]} />,
+  expand:   <Ic d={["M4 9V4h5", "M20 9V4h-5", "M4 15v5h5", "M20 15v5h-5"]} />,
+  contract: <Ic d={["M4 10h5V5", "M20 10h-5V5", "M4 14h5v5", "M20 14h-5v5"]} />,
   grip: (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
       <circle cx="9" cy="5" r="2" />
@@ -421,6 +423,8 @@ function Scratchpad({
   editGroupTitle,
   runGroup,
   addItem,
+  maximizedPane,
+  toggleMaximize,
 }) {
   const [draggedItemId, setDraggedItemId] = React.useState(null);
   const [draggedGroupId, setDraggedGroupId] = React.useState(null);
@@ -519,7 +523,14 @@ function Scratchpad({
   ).length;
 
   return (
-    <div className={`left-pane ${theme}`} style={{ width: `${leftPaneWidth}%`, flex: 'none' }}>
+    <div
+      className={`left-pane ${theme}`}
+      style={{
+        width: maximizedPane === 'scratchpad' ? '100%' : `${leftPaneWidth}%`,
+        display: maximizedPane === 'terminal' ? 'none' : 'flex',
+        flex: 'none'
+      }}
+    >
       <div className="rb-head">
         <h1>{fileName || "Promptly"}</h1>
         <span className="meta">{cmdCount} steps</span>
@@ -532,6 +543,13 @@ function Scratchpad({
             <div className="fill" style={{ width: `${cmdCount ? (doneCount / cmdCount) * 100 : 0}%` }} />
           </div>
         </div>
+        <button
+          className={`term-act${maximizedPane === 'scratchpad' ? ' active' : ''}`}
+          title={maximizedPane === 'scratchpad' ? "Restore Layout" : "Maximize Scratchpad"}
+          onClick={() => toggleMaximize('scratchpad')}
+        >
+          {maximizedPane === 'scratchpad' ? I.contract : I.expand}
+        </button>
       </div>
       <div className="runbook">
         {(() => {

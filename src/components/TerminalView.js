@@ -29,6 +29,7 @@ const I = {
   trash:   <Ic d={["M4 7h16", "M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2", "m6 7 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"]} />,
   eraser:  <Ic d={["M4 19h16", "m3.5 14.5 6-6 6 6-4 4h-4z", "m9.5 8.5 5-5 6 6-5 5"]} />,
   expand:  <Ic d={["M4 9V4h5", "M20 9V4h-5", "M4 15v5h5", "M20 15v5h-5"]} />,
+  contract: <Ic d={["M4 10h5V5", "M20 10h-5V5", "M4 14h5v5", "M20 14h-5v5"]} />,
   history: <Ic d={["M12 3a9 9 0 1 1-8.49 12", "M12 8v4.2l3 1.8", "M3 4.5v4h4"]} />,
   search:  <Ic d={["M10.5 3a7.5 7.5 0 1 0 7.5 7.5 7.5 7.5 0 0 0-7.5-7.5Z", "m21 21-4.3-4.3"]} />,
   up:      <Ic d="m18 15-6-6-6 6" />,
@@ -36,7 +37,7 @@ const I = {
   close:   <Ic d={["M18 6 6 18", "M6 6l12 12"]} />,
 };
 
-function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, tab, setTab }) {
+function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, tab, setTab, maximizedPane, toggleMaximize }) {
   const terminalRef = useRef(null);
   const termInstance = useRef(null);
   const fitAddon = useRef(null);
@@ -234,14 +235,14 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
     };
   }, [sessionId, setIsReady]);
 
-  // Fit terminal when tab switches back to 'terminal'
+  // Fit terminal when tab switches back to 'terminal' or layout changes
   useEffect(() => {
     if (tab === 'terminal' && fitAddon.current) {
       setTimeout(() => {
         try { fitAddon.current.fit(); } catch {}
       }, 50);
     }
-  }, [tab]);
+  }, [tab, maximizedPane]);
 
   // Re-run command from history click
   const handleReRun = (cmd) => {
@@ -284,8 +285,12 @@ function TerminalView({ sessionId, setIsReady, theme, history = [], setHistory, 
             {I.trash}
           </button>
         )}
-        <button className="term-act" title="Maximize">
-          {I.expand}
+        <button
+          className={`term-act${maximizedPane === 'terminal' ? ' active' : ''}`}
+          title={maximizedPane === 'terminal' ? "Restore Layout" : "Maximize Terminal"}
+          onClick={() => toggleMaximize('terminal')}
+        >
+          {maximizedPane === 'terminal' ? I.contract : I.expand}
         </button>
       </div>
 
