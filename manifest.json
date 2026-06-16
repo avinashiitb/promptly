@@ -1,6 +1,6 @@
 {
   "id": "promptly",
-  "name": "Promptly",
+  "name": "Terminal",
   "version": "1.0.0",
   "description": "An interactive streaming terminal plugin using xterm.js.",
   "fileType": "promptly",
@@ -8,5 +8,6 @@
   "entry": "/build/index.html",
   "icon": "build/Icons.svg",
   "preview": true,
-  "core-plugin": true
+  "core-plugin": true,
+  "color": "cyan"
 }
