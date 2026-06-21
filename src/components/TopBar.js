@@ -19,10 +19,7 @@ const Ic = ({ d, fill, size = 16, sw = 2 }) => (
 const I = {
   cube:    <Ic d={["m21 7.5-9-5-9 5v9l9 5 9-5z", "m3 7.5 9 5 9-5", "M12 12.5v9"]} />,
   chev:    <Ic d="m9 6 6 6-6 6" />,
-  moon:    <Ic d="M12 3a6.4 6.4 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
-  sun:     <Ic d={["M12 4v1.5", "M12 18.5V20", "M4 12H5.5", "M18.5 12H20", "m6 6 1 1", "m17 17 1 1", "m18 6-1 1", "m7 17-1 1"]} />,
-  lock:    <Ic d={["M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z", "M8 11V8a4 4 0 0 1 8 0v3"]} />,
-  caret:   <Ic d="m6 9 6 6 6-6" />,
+  export:  <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M17 8l-5-5-5 5", "M12 3v12"]} />,
   playAll: <Ic d={["M5 5.5v13l9-6.5z", "M19 5.5v13"]} />,
 };
 
@@ -92,26 +89,15 @@ function TopBar({
           {running ? "Running…" : "Run all"}
         </button>
 
-        {/* Theme Toggler */}
-        <button
-          className="icon-btn"
-          title={theme === 'dark-theme' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          onClick={() => setTheme(theme === 'dark-theme' ? 'light-theme' : 'dark-theme')}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          {theme === 'dark-theme' ? I.sun : I.moon}
-        </button>
-
-        {/* Options Dropdown Menu */}
+        {/* Export Dropdown Menu */}
         <div style={{ position: "relative" }} ref={menuRef}>
           <button
-            className="btn"
+            className="icon-btn"
+            title="Export Options"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            style={{ display: "flex", alignItems: "center" }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <span style={{ display: 'grid', placeItems: 'center', marginRight: '6px' }}>{I.lock}</span>
-            Options
-            <span style={{ display: 'grid', placeItems: 'center', marginLeft: '4px', opacity: 0.6 }}>{I.caret}</span>
+            {I.export}
           </button>
 
           {isMenuOpen && (

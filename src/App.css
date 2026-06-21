@@ -9,18 +9,19 @@
 
 /* Light Theme Variables */
 .App.light-theme {
+  --bg-header: #ffffff;
   --bg: #ffffff;
-  --subtle: #f6f8fa;
-  --inset: #f0f3f6;
+  --subtle: #f5f7fb;
+  --inset: #eef1f7;
   --raised: #ffffff;
-  --border: #d6dde4;
-  --border-soft: #e7ecf1;
+  --border: rgba(15,23,42,0.12);
+  --border-soft: rgba(15,23,42,0.07);
   --shadow: 0 1px 2px rgba(27,31,36,.06), 0 1px 3px rgba(27,31,36,.04);
-  --fg: #1f2328;
-  --fg-muted: #59636e;
-  --fg-subtle: #8c96a0;
-  --accent: #0969da;
-  --accent-soft: #ddf0ff;
+  --fg: #161b24;
+  --fg-muted: #5b6678;
+  --fg-subtle: #9aa4b5;
+  --accent: #3D6FE0;
+  --accent-soft: rgba(61, 111, 224, 0.2);
   --green: #1f883d;
   --green-hover: #1a7f37;
   --green-soft: #dafbe1;
@@ -31,13 +32,13 @@
 
   /* terminal palette — light theme */
   --t-bg: #f6f8fa;
-  --t-bg2: #ffffff;
-  --t-head: #eaeef2;
-  --t-border: #d0d7de;
-  --t-fg: #1f2328;
-  --t-dim: #57606a;
+  --t-bg2: #f2f4f8;
+  --t-head: #eaeef3;
+  --t-border: rgba(15,23,42,0.07);
+  --t-fg: #161b24;
+  --t-dim: #5b6678;
   --t-green: #1f883d;
-  --t-blue: #0969da;
+  --t-blue: #3D6FE0;
   --t-red: #cf222e;
   --t-amber: #9a6700;
   --t-purple: #8250df;
@@ -46,21 +47,22 @@
 
 /* Dark Theme Variables */
 .App.dark-theme {
-  --bg: #0d1117;
-  --subtle: #11161d;
-  --inset: #0c1016;
-  --raised: #161b22;
-  --border: #283039;
-  --border-soft: #21262d;
+  --bg-header: #1a1a1a;
+  --bg: #1f1f1f;
+  --subtle: #262626;
+  --inset: #1a1a1a;
+  --raised: #2a2a2a;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
   --shadow: 0 1px 0 rgba(0,0,0,.3);
-  --fg: #e6edf3;
-  --fg-muted: #9aa7b3;
-  --fg-subtle: #6b7888;
-  --accent: #4493f8;
-  --accent-soft: #0d2d52;
-  --green: #2ea043;
-  --green-hover: #3fb950;
-  --green-soft: #0f2a16;
+  --fg: #ededed;
+  --fg-muted: #9a9a9a;
+  --fg-subtle: #6a6a6a;
+  --accent: color-mix(in oklab, #3D6FE0 88%, #ffffff);
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, transparent);
+  --green: #10b981;
+  --green-hover: rgba(16, 185, 129, 0.15);
+  --green-soft: rgba(16, 185, 129, 0.15);
   --amber: #d29922;
   --amber-soft: #2e2200;
   --red: #f85149;
@@ -68,13 +70,13 @@
 
   /* terminal palette — dark theme */
   --t-bg: #0b0f14;
-  --t-bg2: #0f151c;
-  --t-head: #10171f;
-  --t-border: #1d2630;
-  --t-fg: #cdd9e5;
-  --t-dim: #6b7888;
+  --t-bg2: #1f1f1f;
+  --t-head: #161616;
+  --t-border: rgba(255, 255, 255, 0.08);
+  --t-fg: #ededed;
+  --t-dim: #9a9a9a;
   --t-green: #3fb950;
-  --t-blue: #58a6ff;
+  --t-blue: color-mix(in oklab, #3D6FE0 88%, #ffffff);
   --t-red: #ff7b72;
   --t-amber: #e3b341;
   --t-purple: #bc8cff;
@@ -114,7 +116,7 @@ body, html, #root {
   gap: 14px;
   padding: 0 16px;
   border-bottom: 1px solid var(--border-soft);
-  background: var(--bg);
+  background: var(--bg-header);
   user-select: none;
 }
 
@@ -131,7 +133,7 @@ body, html, #root {
   color: var(--fg);
   padding: 6px 12px;
   cursor: pointer;
-  transition: background .12s, border-color .12s, opacity .12s;
+  transition: background .12s, border-color .12s, color .12s, opacity .12s;
 }
 
 .btn:hover {
@@ -150,12 +152,20 @@ body, html, #root {
 
 .btn-primary {
   background: var(--green);
-  border-color: color-mix(in srgb, var(--green) 70%, #000 12%);
   color: #fff;
+  border-color: var(--green);
 }
 
-.btn-primary:hover {
-  background: var(--green-hover);
+.App.light-theme .btn-primary:hover {
+  background: var(--green-hover) !important;
+  color: #fff !important;
+  border-color: var(--green-hover) !important;
+}
+
+.App.dark-theme .btn-primary:hover {
+  background: var(--green-soft) !important;
+  color: var(--green) !important;
+  border-color: var(--green) !important;
 }
 
 .icon-btn {
@@ -863,14 +873,22 @@ body.dragging .pane-resizer {
   border-radius: 7px;
   padding: 5px 12px;
   cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--green) 70%, #000 12%);
+  border: 1px solid var(--green);
   background: var(--green);
   color: #fff;
-  transition: background .12s;
+  transition: background .12s, border-color .12s, color .12s, opacity .12s;
 }
 
-.run-btn:hover {
-  background: var(--green-hover);
+.App.light-theme .run-btn:hover {
+  background: var(--green-hover) !important;
+  color: #fff !important;
+  border-color: var(--green-hover) !important;
+}
+
+.App.dark-theme .run-btn:hover {
+  background: var(--green-soft) !important;
+  color: var(--green) !important;
+  border-color: var(--green) !important;
 }
 
 .run-btn.rerun {

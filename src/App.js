@@ -98,7 +98,76 @@ function App() {
 
   const [leftPaneWidth, setLeftPaneWidth] = useState(50);
   const [maximizedPane, setMaximizedPane] = useState(null); // 'scratchpad' | 'terminal' | null
-  const [theme, setTheme] = useState('light-theme');
+  const getThemeFromUrl = () => {
+    try {
+      const url = new URL(window.location.href);
+      let t = url.searchParams.get("theme");
+      if (!t && window.location.hash.includes("?")) {
+        t = new URLSearchParams(window.location.hash.split("?")[1]).get("theme");
+      }
+      return t;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const [theme, setTheme] = useState(() => {
+    const urlTheme = getThemeFromUrl();
+    if (urlTheme === "dark") return "dark-theme";
+    if (urlTheme === "light") return "light-theme";
+    const preloadTheme = window.pluginAPI?.context?.theme;
+    if (preloadTheme === "dark") return "dark-theme";
+    if (preloadTheme === "light") return "light-theme";
+    return 'light-theme';
+  });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const urlTheme = getThemeFromUrl();
+      if (urlTheme === "dark") {
+        setTheme("dark-theme");
+      } else if (urlTheme === "light") {
+        setTheme("light-theme");
+      } else {
+        const preloadTheme = window.pluginAPI?.context?.theme;
+        if (preloadTheme === "dark") {
+          setTheme("dark-theme");
+        } else if (preloadTheme === "light") {
+          setTheme("light-theme");
+        }
+      }
+    };
+
+    const handleThemeChange = (e) => {
+      const newTheme = e.detail?.theme || e.theme;
+      if (newTheme === "dark") {
+        setTheme("dark-theme");
+      } else if (newTheme === "light") {
+        setTheme("light-theme");
+      }
+    };
+
+    const handleMessage = (e) => {
+      if (e.data && e.data.type === "theme-changed") {
+        const newTheme = e.data.theme;
+        if (newTheme === "dark") {
+          setTheme("dark-theme");
+        } else if (newTheme === "light") {
+          setTheme("light-theme");
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("theme-changed", handleThemeChange);
+    window.addEventListener("message", handleMessage);
+    handleHashChange();
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("theme-changed", handleThemeChange);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, []);
   const isDragging = useRef(false);
 
   const [contentDoc, setContentDoc] = useState(null);
@@ -291,7 +360,6 @@ function App() {
                 setGroups(saved.groups);
               }
               if (saved.leftPaneWidth) setLeftPaneWidth(saved.leftPaneWidth);
-              if (saved.theme) setTheme(saved.theme);
             }
           }
         } catch (fetchError) {
@@ -357,7 +425,6 @@ function App() {
                 setTimeout(() => handleSaveRef.current(migrated), 500);
               }
               if (saved.leftPaneWidth) setLeftPaneWidth(saved.leftPaneWidth);
-              if (saved.theme) setTheme(saved.theme);
             }
           }
         } catch (err) {
