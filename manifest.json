@@ -10,5 +10,136 @@
   "iconDark": "build/Icons-light.svg",
   "preview": true,
   "core-plugin": true,
-  "color": "cyan"
+  "color": "cyan",
+  "validator": "validator.js",
+  "aiContext": {
+    "documentContext": "DevScribe Promptly Specification:\nYou are generating a Promptly terminal runbook: saved shell commands, grouped under headings, with plain-text notes, that the user can run later (one step, a whole section, or Run all) in a built-in terminal. Use it for project setup, install/build/run steps, deployment, debugging and operations runbooks.\n\nOUTPUT FORMAT RULES:\n1. Output MUST be a valid JSON array containing EXACTLY ONE promptly block object, starting with '[' and ending with ']'.\n2. Do NOT include any conversational preamble, intro text, or explanation outside the JSON array.\n3. Do NOT wrap the JSON array in markdown code block fences (do NOT use ```json or ```).\n4. The block MUST follow this exact structure:\n   [\n     {\n       \"type\": \"promptly\",\n       \"data\": {\n         \"groups\": [\n           {\n             \"id\": \"g1\",\n             \"title\": \"Install Dependencies\",\n             \"collapsed\": false,\n             \"items\": [\n               { \"id\": \"n1\", \"type\": \"text\", \"text\": \"Installs the project packages from package-lock.json. Requires Node.js 20+.\" },\n               { \"id\": \"s1\", \"type\": \"cmd\", \"title\": \"Install npm Packages\", \"cmd\": \"npm ci\" },\n               { \"id\": \"s2\", \"type\": \"cmd\", \"title\": \"Configure Kubernetes Context\", \"cmd\": \"aws eks update-kubeconfig \\\\\\n  --region ap-south-1 \\\\\\n  --name my-cluster\" }\n             ]\n           }\n         ],\n         \"leftPaneWidth\": 50,\n         \"theme\": \"light-theme\"\n       }\n     }\n   ]\n\nSTRUCTURE RULES:\n1. Each group is a section with a heading ('title'), e.g. \"Prerequisites\", \"Install\", \"Configure\", \"Run\", \"Verify\", \"Cleanup\". Order groups in the sequence the user should run them.\n2. 'items' mixes two types:\n   - { \"type\": \"cmd\", \"title\", \"cmd\" }: ONE runnable shell command with a short imperative title (sub-heading), e.g. \"Start Kafka Container\".\n   - { \"type\": \"text\", \"text\" }: a plain-text note (NO markdown, it is shown as plain text) explaining what the next command does, why, prerequisites, expected output or warnings. Keep notes to 1-3 sentences and place them right BEFORE the command they describe.\n3. ONE COMMAND PER cmd ITEM. Never put several commands in one item: no lines with separate commands, no chaining with && or ;. Create a separate cmd item (with its own title) for each command. Allowed inside one item: a single command split over lines with a trailing backslash, a pipeline (cmd | grep x), and a heredoc that writes one file.\n4. IDs: groups \"g1\", \"g2\", ...; commands \"s1\", \"s2\", ...; notes \"n1\", \"n2\", ... (unique across the whole file). 'collapsed' is false. Keep \"leftPaneWidth\": 50 and \"theme\": \"light-theme\".\n\nCOMMAND RULES:\n- All commands run in ONE persistent interactive shell (macOS/Linux, bash/zsh): 'cd' and 'export' carry over to later steps, so use them as their own steps instead of repeating paths.\n- Run all does NOT wait for a command to finish before sending the next one. Avoid blocking or interactive commands: use detached/non-interactive flags (docker compose up -d, kubectl logs --tail=50 without -f, apt-get install -y, npx --yes, git clone without prompts). If a long-running command is required (dev server, log follow, watch), make it the LAST item of the LAST group and add a note saying it keeps running (stop with Ctrl+C).\n- Never use angle-bracket placeholders like <cluster-name> (the shell treats < > as redirection). Use concrete values from the user's request; otherwise add an early 'Set Variables' step (export CLUSTER_NAME=\"my-cluster\") with a note to edit it, then reference \"$CLUSTER_NAME\".\n- Never hard-code real secrets or passwords; read them from environment variables.\n- Destructive commands (rm -rf, docker compose down -v, kubectl delete, DROP DATABASE, git reset --hard) only when the user asks; put a warning note before them.\n- Add verification steps after important actions (e.g. docker ps, kubectl get pods, node --version, curl -I http://localhost:8080/health).\n- Commands must be complete and copy-paste runnable: no '...', no TODOs, no prompt characters like '$ '.",
+    "fileContext": {
+      "fileType": "promptly",
+      "name": "DevScribe Promptly Terminal",
+      "description": "- 'promptly' (DevScribe Promptly Terminal): Saved, runnable shell/terminal commands organized into sections with notes: project setup, install/build/run steps, deployment and debugging runbooks, kubectl/docker/git/aws CLI commands (aliases: terminal, shell commands, bash, zsh, runbook, setup commands, cli commands).",
+      "naturalLanguageHints": [
+        "terminal",
+        "shell command",
+        "shell commands",
+        "terminal command",
+        "terminal commands",
+        "bash",
+        "zsh",
+        "runbook",
+        "setup commands",
+        "install commands",
+        "cli commands",
+        "command line",
+        "kubectl"
+      ]
+    },
+    "name": "DevScribe Promptly Terminal",
+
+    "purpose": "Save shell commands as runnable, documented runbooks so project setup, operations, and debugging steps can be repeated later.",
+
+    "useWhen": [
+      "The user asks for terminal, shell, or CLI commands.",
+      "The requested project needs setup, install, build, or run steps.",
+      "The user wants a runbook for deployment, debugging, or operations.",
+      "A larger task needs commands to start services (docker compose up -d), run migrations, or verify an environment."
+    ],
+    "naturalLanguageHints": [
+      "terminal",
+      "shell command",
+      "shell commands",
+      "terminal command",
+      "terminal commands",
+      "bash",
+      "zsh",
+      "runbook",
+      "setup commands",
+      "install commands",
+      "cli commands",
+      "command line",
+      "kubectl"
+    ],
+
+    "roleInLargerTasks": {
+      "description": "Promptly contributes the runnable command steps of a larger project: how to install, configure, start, verify, and clean up what the other files describe.",
+
+      "canProvide": [
+        "Project setup and installation steps",
+        "Build, test, and run commands",
+        "Docker and Docker Compose commands",
+        "Kubernetes (kubectl, helm) runbooks",
+        "Cloud CLI commands (aws, gcloud, az)",
+        "Git workflows",
+        "Database CLI commands (mysql, psql, mongosh)",
+        "Debugging and incident runbooks with notes"
+      ]
+    },
+
+    "supportedTechnologies": {
+      "shells": [
+        "bash",
+        "zsh"
+      ],
+      "commonTools": [
+        "git",
+        "npm / yarn / pnpm",
+        "docker / docker compose",
+        "kubectl / helm",
+        "aws / gcloud / az",
+        "mysql / psql / mongosh",
+        "curl"
+      ]
+    },
+
+    "decisionGuidance": [
+      {
+        "requirement": "Commands the user will run in a terminal",
+        "use": "Promptly"
+      },
+      {
+        "requirement": "A runnable program or algorithm in Java, JavaScript, or TypeScript",
+        "use": "Code Editor instead of Promptly"
+      },
+      {
+        "requirement": "A Docker Compose file itself",
+        "use": "Code Editor (language docker); use Promptly for the commands that start/stop it"
+      },
+      {
+        "requirement": "SQL queries or schemas",
+        "use": "Data Bridge instead of Promptly"
+      },
+      {
+        "requirement": "HTTP requests to test",
+        "use": "Protocol-X instead of curl commands in Promptly"
+      }
+    ],
+
+    "operations": {
+      "commands": [
+        "Run a single command",
+        "Run a whole section",
+        "Run all commands in order"
+      ],
+      "notes": [
+        "Explain what a command does",
+        "Document prerequisites and expected output",
+        "Warn before destructive steps"
+      ]
+    },
+
+    "contextAvailable": [
+      "existingGroups",
+      "existingFileName"
+    ],
+
+    "rules": [
+      "One command per command item; never chain commands with && or ;.",
+      "Group commands under headings in the order they should run.",
+      "Put a short plain-text note before commands that need explanation.",
+      "Avoid blocking or interactive commands, or place them last.",
+      "Use exported variables instead of <placeholders>.",
+      "Never hard-code secrets.",
+      "Warn before destructive commands and only include them when asked."
+    ]
+  }
 }
